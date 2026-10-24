@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>真香挂历 · 待办清单</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    min-height:100vh;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #4a3c33, transparent),
+      linear-gradient(#39302a, #241d18);
+    font-family:"Noto Serif SC","SimSun",serif;
+    display:flex; align-items:flex-start; justify-content:center;
+    padding:60px 16px 80px;
+    overflow-x:hidden;
+  }
+  /* 墙面噪点 */
+  body::before{ content:""; position:fixed; inset:0; pointer-events:none; opacity:.5;
+    background-image:radial-gradient(rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size:3px 3px; }
+
+  /* ---- 挂绳与钉子 ---- */
+  .hang{ position:relative; padding-top:0; }
+  .nail{ position:absolute; top:-26px; left:50%; transform:translateX(-50%); width:14px; height:14px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #eee, #999 60%, #666); box-shadow:0 2px 3px rgba(0,0,0,.6); z-index:3; }
+  .string{ position:absolute; top:-24px; left:50%; width:2px; height:158px;
+    background:linear-gradient(#d2452f,#8e2f22); transform-origin:top center; z-index:2; opacity:.9; }
+  .string.l{ transform:rotate(52deg); }
+  .string.r{ transform:rotate(-52deg); }
+
+  /* ---- 挂历纸 ---- */
+  .page{
+    position:relative; width:min(440px, 92vw);
+    background:
+      radial-gradient(circle at 86% 92%, rgba(120,80,30,.09) 0 58px, transparent 59px),
+      repeating-linear-gradient(0deg, rgba(160,120,60,.045) 0 2px, transparent 2px 26px),
+      linear-gradient(#f8f0da, #efe2c2);
+    box-shadow:0 18px 40px rgba(0,0,0,.55), inset 0 2px 0 #d9c9a3;
+    padding:30px 26px 16px;
+  }
+  /* 撕过一页的毛边 */
+  .torn-top{ position:absolute; top:-7px; left:-2px; right:-2px; height:9px; background:#efe2c2;
+    filter:drop-shadow(0 2px 1px rgba(0,0,0,.35));
+    clip-path:polygon(0 100%, 4% 30%, 9% 90%, 15% 20%, 21% 95%, 27% 35%, 33% 85%, 40% 25%, 47% 100%, 54% 30%, 61% 90%, 68% 20%, 75% 95%, 82% 35%, 89% 85%, 95% 25%, 100% 90%, 100% 100%); }
+  /* 红色仿古双线框 */
+  .page::before{ content:""; position:absolute; inset:11px; pointer-events:none;
+    border:2px solid rgba(178,58,44,.8); outline:1px solid rgba(178,58,44,.45); outline-offset:3px; }
+  /* 相邻页码残影 */
+  .ghost{ position:absolute; font-family:"Noto Serif SC",serif; color:rgba(122,91,52,.3); font-size:13px; z-index:1; }
+  .ghost.tl{ top:16px; left:20px; transform:rotate(-4deg); }
+  .ghost.tr{ top:16px; right:20px; transform:rotate(5deg); }
+
+  /* ---- 报头 ---- */
+  .masthead{ text-align:center; position:relative; z-index:2; }
+  .year-tag{ display:inline-block; font-size:12px; color:#7a5b34; border:1px solid rgba(122,91,52,.5);
+    padding:1px 10px; letter-spacing:3px; margin-bottom:4px; }
+  .masthead-row{ display:flex; align-items:center; justify-content:center; gap:12px; }
+  .deco-line{ flex:none; width:52px; height:0; border-top:2px solid rgba(178,58,44,.45); position:relative; }
+  .deco-line::after{ content:"✦"; position:absolute; top:-11px; font-size:11px; color:rgba(178,58,44,.6); }
+  .deco-line.l::after{ right:-4px; } .deco-line.r::after{ left:-4px; }
+  h1{ font-family:"Ma Shan Zheng","KaiTi","楷体",serif; font-weight:400; color:#b23a2c;
+    font-size:52px; line-height:1.1; letter-spacing:8px; text-shadow:1px 1px 0 rgba(178,58,44,.15); }
+  .subtitle{ font-size:12px; color:#8a6b3f; letter-spacing:3px; margin-top:2px; }
+
+  /* ---- 日期区 ---- */
+  .date-row{ display:flex; align-items:flex-end; gap:16px; margin:14px 6px 4px; position:relative; z-index:2; }
+  .big-date{ font-family:"Noto Serif SC","SimSun",serif; font-weight:900; font-size:108px; line-height:.82; color:#b23a2c; }
+  .date-meta{ padding-bottom:8px; }
+  .weekday{ font-size:20px; font-weight:600; color:#4a3b28; letter-spacing:5px; }
+  .lunar{ font-size:12px; color:#8a6b3f; margin:5px 0 7px; letter-spacing:1px; }
+  .almanac{ display:flex; gap:8px; font-size:12px; }
+  .almanac span{ border:1px solid rgba(178,58,44,.55); color:#b23a2c; padding:2px 7px;
+    letter-spacing:1px; background:rgba(178,58,44,.06); white-space:nowrap; }
+
+  .divider{ display:flex; align-items:center; gap:10px; margin:10px 4px 8px; }
+  .divider::before,.divider::after{ content:""; flex:1; border-top:2px solid rgba(178,58,44,.65); border-bottom:1px solid rgba(178,58,44,.3); }
+  .divider .core{ color:#b23a2c; font-size:12px; }
+
+  /* ---- 待办区 ---- */
+  .counter{ text-align:right; font-size:12px; color:#8a6b3f; letter-spacing:2px; margin-bottom:6px; }
+  .counter b{ color:#b23a2c; font-size:15px; }
+
+  /* ---- 真香档案 ---- */
+  .archive{ display:flex; margin:0 0 8px; border-top:1px dashed rgba(122,91,52,.35);
+    border-bottom:1px dashed rgba(122,91,52,.35); }
+  .archive div{ flex:1; text-align:center; padding:6px 0 5px; }
+  .archive div + div{ border-left:1px dashed rgba(122,91,52,.3); }
+  .archive b{ display:block; font-family:"Noto Serif SC","SimSun",serif; font-weight:900;
+    font-size:17px; line-height:1.2; color:#b23a2c; }
+  .archive span{ display:block; font-size:10px; color:#a08858; letter-spacing:1px; margin-top:1px; }
+
+  ul{ list-style:none; }
+  li{ position:relative; display:flex; align-items:center; gap:10px; padding:10px 6px;
+    border-bottom:1px dashed rgba(122,91,52,.35); cursor:pointer; animation:inkIn .4s both; }
+  @keyframes inkIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none;} }
+  .chk{ flex:none; width:22px; height:22px; border:2px solid rgba(178,58,44,.8); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; transition:transform .2s; background:rgba(255,255,255,.25); }
+  li:hover .chk{ transform:scale(1.15); }
+  .txt{ font-family:"KaiTi","楷体",serif; font-size:19px; color:#3c2f1e; letter-spacing:1px; word-break:break-all; }
+  .flag-note{ margin-left:auto; font-size:11px; color:#a08858; letter-spacing:1px; white-space:nowrap; }
+  li.done .txt{ color:#9b8a6a; text-decoration:line-through; text-decoration-color:rgba(178,58,44,.6); }
+  li.done .flag-note{ color:#b23a2c; opacity:.85; }
+  li.overdue .flag-note{ color:#b23a2c; font-weight:700; }
+  .stamp{ position:absolute; right:78px; top:50%; transform:translateY(-50%) rotate(-12deg);
+    border:3px double rgba(178,58,44,.8); color:rgba(178,58,44,.85); font-family:"KaiTi","楷体",serif;
+    font-weight:700; font-size:15px; letter-spacing:5px; padding:1px 4px 1px 9px; border-radius:4px;
+    background:rgba(178,58,44,.05); pointer-events:none; white-space:nowrap; }
+  li.just-stamped .stamp{ animation:stampIn .38s cubic-bezier(.2,2.2,.4,1) both; }
+  @keyframes stampIn{ 0%{ transform:translateY(-50%) rotate(-30deg) scale(2.4); opacity:0;}
+    60%{ opacity:1;} 100%{ transform:translateY(-50%) rotate(-12deg) scale(1); opacity:1;} }
+  li.tearing{ animation:tear .55s ease-in both; }
+  @keyframes tear{ 20%{ transform:rotate(1.5deg);} 100%{ transform:translateY(340px) rotate(28deg); opacity:0; } }
+  .empty,.alldone{ display:none; text-align:center; font-family:"KaiTi","楷体",serif; font-size:16px;
+    color:#a08858; padding:22px 0 10px; letter-spacing:2px; }
+  .alldone{ color:#b23a2c; }
+
+  /* ---- 输入区 ---- */
+  .input-row{ display:flex; gap:8px; margin:14px 46px 4px 0; }
+  #todoInput{ flex:1; min-width:0; border:none; border-bottom:2px solid rgba(122,91,52,.5); background:transparent;
+    font-family:"KaiTi","楷体",serif; font-size:17px; color:#3c2f1e; padding:6px 4px; outline:none; letter-spacing:1px; }
+  #todoInput::placeholder{ color:#b3a077; }
+  #dueSel{ flex:none; width:62px; border:none; border-bottom:2px solid rgba(122,91,52,.5); background:transparent;
+    font-family:"KaiTi","楷体",serif; font-size:13px; color:#7a5b34; padding:7px 0 6px; outline:none;
+    text-align:center; cursor:pointer; }
+  #dueSel:focus{ border-bottom-color:#b23a2c; color:#b23a2c; }
+  #addBtn{ flex:none; border:none; background:#b23a2c; color:#f8f0da; font-family:inherit; font-size:14px;
+    letter-spacing:3px; padding:8px 14px 8px 17px; cursor:pointer; box-shadow:0 3px 0 #7d2a20; }
+  #addBtn:active{ transform:translateY(2px); box-shadow:0 1px 0 #7d2a20; }
+
+  /* ---- 页脚 ---- */
+  .page-footer{ display:flex; align-items:center; justify-content:space-between; gap:8px;
+    margin-top:14px; font-size:10px; color:#a08858; letter-spacing:1px; flex-wrap:wrap; }
+  .footer-left{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  #tearBtn,#shareBtn{ border:1px solid rgba(122,91,52,.5); background:transparent; color:#7a5b34; font-size:11px;
+    padding:4px 9px; cursor:pointer; letter-spacing:1px; font-family:inherit; }
+  #tearBtn:hover,#shareBtn:hover{ background:rgba(178,58,44,.08); color:#b23a2c; border-color:rgba(178,58,44,.5); }
+  #resetLink{ cursor:pointer; text-decoration:underline dotted; }
+  /* 右下角印章 */
+  .seal{ position:absolute; right:16px; bottom:40px; width:36px; height:36px; background:#b23a2c; color:#f6ecd2;
+    writing-mode:vertical-rl; font-family:"KaiTi","楷体",serif; font-size:15px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; letter-spacing:2px; border-radius:3px;
+    transform:rotate(-6deg); opacity:.88; box-shadow:0 1px 2px rgba(0,0,0,.15); z-index:2; }
+
+  /* ---- 全屏“真香！”特效 ---- */
+  .stamp-fx{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    pointer-events:none; z-index:9; opacity:0; }
+  .stamp-fx span{ font-family:"Ma Shan Zheng","KaiTi","楷体",serif; font-size:min(32vw,150px);
+    color:rgba(178,58,44,.92); transform:rotate(-8deg); }
+  .stamp-fx.show{ animation:fxPop 1s ease both; }
+  @keyframes fxPop{ 0%{ opacity:0; transform:scale(.4);} 18%{ opacity:1; transform:scale(1.15);}
+    30%{ transform:scale(1);} 70%{ opacity:1;} 100%{ opacity:0; transform:scale(1.05) translateY(-16px);} }
+
+  /* ---- 轻提示 ---- */
+  .toast{ position:fixed; left:50%; bottom:26px; transform:translate(-50%,16px);
+    background:#3a2d1d; color:#f8f0da; font-family:"KaiTi","楷体",serif; font-size:13px;
+    letter-spacing:1px; padding:9px 18px; border-left:3px solid #b23a2c;
+    opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; z-index:20; max-width:90vw; }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  @media (max-width:420px){
+    .deco-line{ display:none; }
+    h1{ font-size:40px; letter-spacing:4px; white-space:nowrap; }
+    .big-date{ font-size:78px; }
+    .almanac{ flex-wrap:wrap; gap:5px; font-size:11px; }
+    .stamp{ right:64px; }
+    .input-row{ gap:6px; }
+    #dueSel{ width:56px; font-size:12px; }
+    #addBtn{ padding:8px 10px 8px 13px; font-size:13px; letter-spacing:2px; }
+    .flag-note{ font-size:10px; }
+    .archive b{ font-size:15px; }
+  }
+</style>
+</head>
+<body>
+  <div class="hang">
+    <div class="nail"></div>
+    <div class="string l"></div>
+    <div class="string r"></div>
+
+    <div class="page">
+      <div class="torn-top"></div>
+      <span class="ghost tl" id="ghostL">23</span>
+      <span class="ghost tr" id="ghostR">25</span>
+
+      <div class="masthead">
+        <div class="year-tag">2026 · 丙午马年</div>
+        <div class="masthead-row">
+          <span class="deco-line l"></span>
+          <h1>真香挂历</h1>
+          <span class="deco-line r"></span>
+        </div>
+        <div class="subtitle">咸鱼立flag专用 · 咸鱼翻身办公室 监制</div>
+      </div>
+
+      <div class="date-row">
+        <div class="big-date" id="bigDate">24</div>
+        <div class="date-meta">
+          <div class="weekday" id="weekday">星期六</div>
+          <div class="lunar">农历丙午年 · 香历吉日</div>
+          <div class="almanac"><span id="yi">宜 · 立flag</span><span id="ji">忌 · 食言</span></div>
+        </div>
+      </div>
+
+      <div class="divider"><span class="core">❖</span></div>
+
+      <div class="counter">本页真香 × <b id="xiangCount">0</b></div>
+      <div class="archive">
+        <div><b id="statTotal">0</b><span>累计真香</span></div>
+        <div><b id="statStreak">0</b><span>连续真香 · 天</span></div>
+        <div><b id="statRatio">0%</b><span>嘴硬指数</span></div>
+      </div>
+      <ul id="todoList"></ul>
+      <div class="empty" id="empty">flag 全灭，宜躺平～</div>
+      <div class="alldone" id="allDone">全部真香！点下方「撕页」翻开新的一页</div>
+
+      <div class="input-row">
+        <input id="todoInput" maxlength="30" placeholder="打死也不做的flag…" />
+        <select id="dueSel" aria-label="flag 期限">
+          <option value="tonight">今晚</option>
+          <option value="tomorrow" selected>明天</option>
+          <option value="week">这周</option>
+        </select>
+        <button id="addBtn">立flag</button>
+      </div>
+
+      <div class="page-footer">
+        <div class="footer-left">
+          <button id="tearBtn">撕页 · 清除已真香</button>
+          <button id="shareBtn">存小票</button>
+          <span id="resetLink">重置demo</span>
+        </div>
+        <span id="pageNo">第 297 页 / 共 365 页</span>
+      </div>
+
+      <div class="seal">真香</div>
+    </div>
+  </div>
+
+  <div class="stamp-fx" id="stampFx"><span>真香！</span></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+  /* ================== 数据层 ================== */
+  const KEY = 'zhenxiang_todo_v2';
+  const LEGACY_KEY = 'zhenxiang_todo_v1';
+
+  // ?fresh 一键回厂：清掉本机数据，重新种一页挂历
+  try {
+    if (new URLSearchParams(location.search).has('fresh')) {
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(LEGACY_KEY);
+    }
+  } catch(e){}
+
+  /* ---- 时间工具 ---- */
+  function endOfToday(){ const d = new Date(); d.setHours(23,59,59,999); return d.getTime(); }
+  function endOfTomorrow(){ const d = new Date(); d.setDate(d.getDate()+1); d.setHours(23,59,59,999); return d.getTime(); }
+  function endOfWeek(){
+    const d = new Date(); const add = (7 - d.getDay()) % 7;
+    d.setDate(d.getDate() + add); d.setHours(23,59,59,999);
+    if (d.getTime() <= Date.now()){ d.setDate(d.getDate()+7); d.setHours(23,59,59,999); }
+    return d.getTime();
+  }
+  function dateKey(ts){ const d = new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function prevKey(ts){ const d = new Date(ts); d.setDate(d.getDate()-1); return dateKey(d.getTime()); }
+  function clock(ts){ const d = new Date(ts); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+  function dayOfYear(){ const d = new Date(); return Math.floor((d - new Date(d.getFullYear(),0,0)) / 864e5); }
+
+  /* ---- 出厂数据：留一条已过期的 flag，开场自动盖真香 ---- */
+  function seedTodos(){
+    const now = Date.now();
+    return [
+      { text:'今晚一定早睡',   done:false, dueAt:endOfToday(),      doneAt:null, auto:false, counted:false },
+      { text:'明天开始减肥',   done:true,  dueAt:endOfTomorrow(),   doneAt:now,  auto:false, counted:true  },
+      { text:'奶茶只喝三分糖', done:false, dueAt:endOfTomorrow(),   doneAt:null, auto:false, counted:false },
+      { text:'这局打完就睡',   done:false, dueAt:now - 2*3600e3,    doneAt:null, auto:false, counted:false },
+    ];
+  }
+  function seedMeta(){
+    const y = new Date(); y.setDate(y.getDate()-1);
+    return { totalXiang:13, totalFlags:21, streak:5, lastXiangDate:dateKey(y.getTime()) };
+  }
+
+  /* ---- 读写与迁移 ---- */
+  function fixTodo(t){
+    return {
+      text: String(t.text || ''),
+      done: !!t.done,
+      dueAt: typeof t.dueAt === 'number' ? t.dueAt : endOfTomorrow(),
+      doneAt: typeof t.doneAt === 'number' ? t.doneAt : null,
+      auto: !!t.auto,
+      counted: typeof t.counted === 'boolean' ? t.counted : !!t.done,
+    };
+  }
+  function load(){
+    try {
+      const s = localStorage.getItem(KEY);
+      if (s){
+        const d = JSON.parse(s);
+        if (d && Array.isArray(d.todos)){
+          return {
+            todos: d.todos.map(fixTodo),
+            meta: Object.assign({ totalXiang:0, totalFlags:0, streak:0, lastXiangDate:null }, d.meta || {}),
+          };
+        }
+      }
+      const old = localStorage.getItem(LEGACY_KEY);   // v1 纯数组，平滑升级
+      if (old){
+        const arr = JSON.parse(old);
+        if (Array.isArray(arr)){
+          const todos = arr.map(fixTodo);
+          const done = todos.filter(t => t.done).length;
+          return {
+            todos,
+            meta: { totalXiang:done, totalFlags:todos.length, streak:done ? 1 : 0, lastXiangDate:done ? dateKey(Date.now()) : null },
+          };
+        }
+      }
+    } catch(e){}
+    return { todos: seedTodos(), meta: seedMeta() };
+  }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify({ v:2, todos, meta })); } catch(e){} }
+
+  const state = load();
+  let todos = state.todos;
+  let meta  = state.meta;
+  let tearing = false;
+
+  /* ---- 日期 ---- */
+  const now = new Date();
+  const weekdays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+  document.getElementById('bigDate').textContent = now.getDate();
+  document.getElementById('weekday').textContent = weekdays[now.getDay()];
+  document.getElementById('ghostL').textContent = now.getDate() - 1;
+  document.getElementById('ghostR').textContent = now.getDate() + 1;
+  document.getElementById('pageNo').textContent = `第 ${dayOfYear()} 页 / 共 365 页`;
+
+  /* ---- 宜忌（按日期固定） ---- */
+  function seededPick(arr, salt){
+    const d = new Date();
+    const seed = d.getFullYear()*372 + (d.getMonth()+1)*31 + d.getDate() + salt;
+    return arr[seed % arr.length];
+  }
+  const YI = ['立flag','嘴硬','许愿','画大饼','许诺减肥','说最后一句','囤零食','立誓早睡','半夜点外卖'];
+  const JI = ['食言','赖床','连夜跑路','半途而废','打开购物车','开黑到三点','再喝一杯','删库跑路'];
+  const yiText = seededPick(YI, 1);
+  const jiText = seededPick(JI, 7);
+  document.getElementById('yi').textContent = '宜 · ' + yiText;
+  document.getElementById('ji').textContent = '忌 · ' + jiText;
+
+  /* ---- 真香档案 ---- */
+  function recordXiang(ts){
+    meta.totalXiang += 1;
+    const k = dateKey(ts);
+    if (meta.lastXiangDate !== k){
+      meta.streak = (meta.lastXiangDate === prevKey(ts)) ? meta.streak + 1 : 1;
+      meta.lastXiangDate = k;
+    }
+  }
+  function renderArchive(){
+    document.getElementById('statTotal').textContent = meta.totalXiang;
+    document.getElementById('statStreak').textContent = meta.streak;
+    const ratio = meta.totalFlags ? Math.min(100, Math.round(meta.totalXiang / meta.totalFlags * 100)) : 0;
+    document.getElementById('statRatio').textContent = ratio + '%';
+  }
+
+  /* ---- 期限文案 ---- */
+  function dueText(t){
+    if (!t.dueAt) return '未设期限';
+    if (t.dueAt <= Date.now()) return '已到期';
+    const d = new Date(t.dueAt), n = new Date();
+    if (d.toDateString() === n.toDateString()) return '今晚 ' + clock(t.dueAt);
+    const tom = new Date(); tom.setDate(tom.getDate() + 1);
+    if (d.toDateString() === tom.toDateString()) return '明天 ' + clock(t.dueAt);
+    return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()] + ' ' + clock(t.dueAt);
+  }
+
+  /* ---- 轻提示 / 全屏盖章 ---- */
+  let toastTimer = null;
+  function toast(msg){
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+  function fx(){
+    const el = document.getElementById('stampFx');
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+
+  /* ---- 到点没做，挂历替你盖真香 ---- */
+  function settleOverdue(){
+    const ts = Date.now(), hit = [];
+    todos.forEach((t, i) => {
+      if (!t.done && t.dueAt && t.dueAt <= ts){
+        t.done = true; t.auto = true; t.doneAt = ts;
+        if (!t.counted){ t.counted = true; recordXiang(ts); }
+        hit.push(i);
+      }
+    });
+    if (hit.length){
+      save();
+      toast('挂历替你盖了 ' + hit.length + ' 个真香章');
+      setTimeout(fx, 900);
+    }
+    return hit;
+  }
+
+  /* ---- 渲染 ---- */
+  const listEl = document.getElementById('todoList');
+  function render(justIdx){
+    const just = justIdx == null ? [] : (Array.isArray(justIdx) ? justIdx : [justIdx]);
+    listEl.innerHTML = '';
+    todos.forEach((t, i) => {
+      const li = document.createElement('li');
+      if (t.done) li.classList.add('done');
+      if (t.auto) li.classList.add('overdue');
+      if (just.indexOf(i) > -1) li.classList.add('just-stamped');
+      const chk = document.createElement('span'); chk.className = 'chk';
+      const txt = document.createElement('span'); txt.className = 'txt'; txt.textContent = t.text;
+      const note = document.createElement('span'); note.className = 'flag-note';
+      note.textContent = t.done ? (t.auto ? '到期真香 ✓' : '已真香 ✓') : dueText(t);
+      li.append(chk, txt, note);
+      if (t.done){
+        const s = document.createElement('span'); s.className = 'stamp'; s.textContent = '真香';
+        li.appendChild(s);
+      }
+      li.addEventListener('click', () => toggle(i));
+      listEl.appendChild(li);
+    });
+    document.getElementById('xiangCount').textContent = todos.filter(t => t.done).length;
+    document.getElementById('empty').style.display = todos.length ? 'none' : 'block';
+    document.getElementById('allDone').style.display =
+      (todos.length && todos.every(t => t.done)) ? 'block' : 'none';
+    renderArchive();
+  }
+
+  const XIANG_LINES = [
+    '人没事，flag 没了。',
+    '说好今晚早睡，现在是 02:47。',
+    'flag 立得越响，章盖得越深。',
+    '你不是忘了，你只是不想。',
+    '明天开始减肥——今天是第 47 个明天。',
+  ];
+  function pickLine(){ return XIANG_LINES[Math.floor(Math.random()*XIANG_LINES.length)]; }
+
+  function toggle(i){
+    if (tearing) return;
+    const t = todos[i];
+    if (t.done){
+      t.done = false; t.doneAt = null; t.auto = false;
+      if (t.counted){ t.counted = false; meta.totalXiang = Math.max(0, meta.totalXiang - 1); }
+      save(); render();
+      toast('章撕了，flag 继续嘴硬');
+    } else {
+      t.done = true; t.doneAt = Date.now(); t.auto = false;
+      if (!t.counted){ t.counted = true; recordXiang(t.doneAt); }
+      save(); render(i); fx();
+      toast(pickLine());
+    }
+  }
+
+  /* ---- 立flag（带期限） ---- */
+  const input  = document.getElementById('todoInput');
+  const dueSel = document.getElementById('dueSel');
+  function addTodo(){
+    const text = input.value.trim();
+    if (!text) return;
+    const opt = dueSel.value;
+    const dueAt = opt === 'tonight' ? endOfToday() : opt === 'week' ? endOfWeek() : endOfTomorrow();
+    todos.push({ text, done:false, dueAt, doneAt:null, auto:false, counted:false });
+    meta.totalFlags += 1;
+    save(); render(todos.length - 1);
+    input.value = ''; input.focus();
+    toast('flag 已上挂历 · ' + dueText(todos[todos.length - 1]));
+  }
+  document.getElementById('addBtn').addEventListener('click', addTodo);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+
+  /* ---- 撕页 ---- */
+  document.getElementById('tearBtn').addEventListener('click', () => {
+    if (tearing) return;
+    const doneLis = [...listEl.querySelectorAll('li.done')];
+    if (!doneLis.length) return;
+    tearing = true;
+    doneLis.forEach((li, k) => setTimeout(() => li.classList.add('tearing'), k * 90));
+    setTimeout(() => {
+      todos = todos.filter(t => !t.done);
+      save(); tearing = false; render();
+      toast('这一页撕了，新的一页继续嘴硬');
+    }, doneLis.length * 90 + 600);
+  });
+
+  /* ---- 重置 ---- */
+  document.getElementById('resetLink').addEventListener('click', () => {
+    try { localStorage.removeItem(KEY); localStorage.removeItem(LEGACY_KEY); } catch(e){}
+    todos = seedTodos(); meta = seedMeta();
+    save();
+    render(settleOverdue());
+  });
+
+  /* ---- 存小票：1080×1440 真香档案 ---- */
+  function drawShare(){
+    const W = 1080, H = 1440;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d');
+    const PAPER = '#f8f0da', RED = '#b23a2c', INK = '#3c2f1e', BROWN = '#7a5b34', SOFT = '#8a6b3f';
+
+    // 纸底 + 横纹
+    g.fillStyle = PAPER; g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(160,120,60,.06)'; g.lineWidth = 2;
+    for (let y = 38; y < H; y += 38){ g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+    // 双线红框
+    g.strokeStyle = 'rgba(178,58,44,.85)'; g.lineWidth = 6; g.strokeRect(46, 46, W-92, H-92);
+    g.strokeStyle = 'rgba(178,58,44,.45)'; g.lineWidth = 2; g.strokeRect(64, 64, W-128, H-128);
+
+    const t = (str, x, y, font, color, align) => {
+      g.font = font; g.fillStyle = color; g.textAlign = align || 'center'; g.textBaseline = 'alphabetic';
+      g.fillText(str, x, y);
+    };
+    const d = new Date();
+
+    // 报头
+    t('2026 · 丙午马年 · 真香档案', W/2, 142, '26px "Noto Serif SC","SimSun",serif', BROWN);
+    t('真香挂历', W/2, 296, '112px "Ma Shan Zheng","KaiTi","楷体",serif', RED);
+    t('咸鱼立flag专用 · 真香小票', W/2, 348, '24px "Noto Serif SC","SimSun",serif', SOFT);
+
+    g.strokeStyle = 'rgba(178,58,44,.7)'; g.lineWidth = 4;
+    g.beginPath(); g.moveTo(96, 398); g.lineTo(W-96, 398); g.stroke();
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(96, 408); g.lineTo(W-96, 408); g.stroke();
+
+    // 日期
+    t(String(d.getDate()), 100, 600, '900 172px "Noto Serif SC","SimSun",serif', RED, 'left');
+    t(weekdays[d.getDay()], 372, 486, '40px "Noto Serif SC","SimSun",serif', INK, 'left');
+    t('农历丙午年 · 香历吉日 · 第 ' + dayOfYear() + ' 页', 372, 532, '22px "Noto Serif SC","SimSun",serif', SOFT, 'left');
+    t('宜 · ' + yiText, 372, 576, '24px "KaiTi","楷体",serif', RED, 'left');
+    t('忌 · ' + jiText, 372, 614, '24px "KaiTi","楷体",serif', RED, 'left');
+
+    g.strokeStyle = 'rgba(178,58,44,.55)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(96, 662); g.lineTo(W-96, 662); g.stroke();
+
+    // 三格统计
+    const ratio = meta.totalFlags ? Math.min(100, Math.round(meta.totalXiang / meta.totalFlags * 100)) : 0;
+    const stats = [[meta.totalXiang, '累计真香'], [meta.streak, '连续真香 · 天'], [ratio + '%', '嘴硬指数']];
+    stats.forEach((s, i) => {
+      const cx = 270 + i * 270;
+      t(String(s[0]), cx, 748, '54px "Noto Serif SC","SimSun",serif', RED);
+      t(s[1], cx, 786, '21px "Noto Serif SC","SimSun",serif', SOFT);
+    });
+    g.strokeStyle = 'rgba(122,91,52,.25)'; g.lineWidth = 1;
+    [405, 675].forEach(x => {
+      for (let y = 706; y < 800; y += 10){
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x, y + 5); g.stroke();
+      }
+    });
+
+    g.strokeStyle = 'rgba(178,58,44,.55)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(96, 818); g.lineTo(W-96, 818); g.stroke();
+
+    // 小票上的 flag（最多三条）
+    const stampBox = (cx, cy, rw, rh, deg, label, size) => {
+      g.save(); g.translate(cx, cy); g.rotate(deg * Math.PI / 180);
+      g.strokeStyle = 'rgba(178,58,44,.85)'; g.lineWidth = 4; g.strokeRect(-rw/2, -rh/2, rw, rh);
+      g.lineWidth = 1.5; g.strokeRect(-rw/2 + 6, -rh/2 + 6, rw - 12, rh - 12);
+      g.fillStyle = 'rgba(178,58,44,.9)'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = size + 'px "KaiTi","楷体",serif';
+      g.fillText(label, 0, 2);
+      g.restore();
+    };
+    const rows = todos.slice(0, 3);
+    if (!rows.length){
+      t('挂历还空着，flag 一个没立', W/2, 940, '34px "KaiTi","楷体",serif', SOFT);
+    }
+    rows.forEach((t0, i) => {
+      const y = 876 + i * 78;
+      const label = t0.text.length > 15 ? t0.text.slice(0, 15) + '…' : t0.text;
+      g.strokeStyle = 'rgba(178,58,44,.85)'; g.lineWidth = 3;
+      g.beginPath(); g.arc(132, y - 12, 17, 0, Math.PI * 2); g.stroke();
+      if (t0.done){
+        g.beginPath(); g.moveTo(124, y - 12); g.lineTo(130, y - 4); g.lineTo(141, y - 21); g.stroke();
+      }
+      g.font = '34px "KaiTi","楷体",serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+      g.fillStyle = t0.done ? '#9b8a6a' : INK;
+      g.fillText(label, 168, y);
+      if (t0.done){
+        const w = g.measureText(label).width;
+        g.strokeStyle = 'rgba(178,58,44,.55)'; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(168, y - 11); g.lineTo(168 + w, y - 11); g.stroke();
+        stampBox(930, y - 16, 118, 52, -12, '真香', 28);
+      } else {
+        g.font = '22px "KaiTi","楷体",serif'; g.textAlign = 'right';
+        g.fillStyle = (t0.dueAt && t0.dueAt <= Date.now()) ? RED : SOFT;
+        g.fillText(dueText(t0), W - 108, y - 6);
+      }
+    });
+
+    // 大印章
+    g.save(); g.translate(852, 1150); g.rotate(-6 * Math.PI / 180);
+    g.fillStyle = 'rgba(178,58,44,.92)'; g.fillRect(-89, -89, 178, 178);
+    g.fillStyle = '#f6ecd2'; g.font = '86px "KaiTi","楷体",serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('真', 0, -42); g.fillText('香', 0, 46);
+    g.restore();
+
+    // 页脚
+    t('本页真香 × ' + todos.filter(x => x.done).length, 100, 1300, '30px "Noto Serif SC","SimSun",serif', RED, 'left');
+    t('第 ' + dayOfYear() + ' 页 / 共 365 页', W - 100, 1300, '22px "Noto Serif SC","SimSun",serif', SOFT, 'right');
+    t('真香挂历 · 在浏览器打开，立一个你的 flag', W/2, 1352, '22px "Noto Serif SC","SimSun",serif', BROWN);
+
+    return cv.toDataURL('image/png');
+  }
+
+  document.getElementById('shareBtn').addEventListener('click', () => {
+    try {
+      const a = document.createElement('a');
+      a.href = drawShare();
+      a.download = 'zhenxiang-' + dateKey(Date.now()) + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      toast('真香小票已保存');
+    } catch(e){
+      toast('小票画不出来，换个浏览器试试');
+    }
+  });
+
+  /* ---- 启动：先结算过期 flag，再渲染 ---- */
+  render(settleOverdue());
+</script>
+</body>
+</html>
